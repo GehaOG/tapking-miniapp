@@ -1,0 +1,5 @@
+node_modules/
+server/game.db
+server/.env
+*.log
+.DS_Store

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node index.js)",
+      "Bash(ngrok version *)",
+      "PowerShell(winget install ngrok.ngrok --accept-source-agreements --accept-package-agreements)",
+      "Bash(curl -s http://127.0.0.1:4040/api/tunnels)",
+      "Read(//tmp/**)",
+      "Bash(curl -s http://localhost:3000/api/leaderboard)",
+      "Bash(curl -sv http://localhost:3000/api/leaderboard)",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(git init *)",
+      "Bash(git add *)"
+    ]
+  }
+}

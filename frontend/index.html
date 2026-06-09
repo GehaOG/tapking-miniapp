@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>TapKing</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+  <!-- Particle canvas background -->
+  <canvas id="bgCanvas"></canvas>
+
+  <div id="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-avatar" id="avatarEl"></div>
+      <div class="header-info">
+        <span class="header-name" id="usernameEl">Player</span>
+        <span class="header-rank" id="rankEl">#—</span>
+      </div>
+      <button class="btn-leaderboard" id="btnLeaderboard" title="Лидеры">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="10" width="4" height="12" rx="1"/>
+          <rect x="10" y="6" width="4" height="16" rx="1"/>
+          <rect x="18" y="2" width="4" height="20" rx="1"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Score -->
+    <section class="score-section">
+      <div class="score-label">Монеты</div>
+      <div class="score-display">
+        <span class="coin-icon">🪙</span>
+        <span id="scoreEl" class="score-number">0</span>
+      </div>
+    </section>
+
+    <!-- Click area -->
+    <section class="tap-section" id="tapSection">
+      <div class="tap-glow" id="tapGlow"></div>
+      <button class="tap-btn" id="tapBtn" aria-label="Тапнуть">
+        <div class="tap-inner">
+          <span class="tap-emoji">👑</span>
+        </div>
+      </button>
+    </section>
+
+    <!-- Energy bar -->
+    <section class="energy-section">
+      <div class="energy-header">
+        <span>⚡ Энергия</span>
+        <span id="energyVal">1000 / 1000</span>
+      </div>
+      <div class="energy-bar-track">
+        <div class="energy-bar-fill" id="energyBar"></div>
+      </div>
+    </section>
+
+    <!-- Stats row -->
+    <section class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="statTaps">0</div>
+        <div class="stat-label">Тапов</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statPerTap">1</div>
+        <div class="stat-label">За тап</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="statRank">—</div>
+        <div class="stat-label">Место</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- Leaderboard overlay -->
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h2>🏆 Лидеры</h2>
+        <button class="btn-close" id="btnClose">✕</button>
+      </div>
+      <ul class="lb-list" id="lbList">
+        <li class="lb-loading">Загрузка…</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Floating score popup template (cloned by JS) -->
+  <div id="floatTemplate" class="float-score" style="display:none">+1</div>
+
+  <script src="app.js"></script>
+</body>
+</html>
