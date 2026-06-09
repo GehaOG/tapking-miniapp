@@ -2,17 +2,14 @@ require('dotenv').config();
 const { Client } = require('ssh2');
 const { SocksClient } = require('socks');
 const https = require('https');
+const net   = require('net');
 
 const BOT_TOKEN  = process.env.BOT_TOKEN;
 const LOCAL_PORT = parseInt(process.env.PORT || '3000', 10);
-
-// SOCKS5 прокси Clash/V2Ray
 const PROXY_HOST = '127.0.0.1';
 const PROXY_PORT = 10808;
-
-// SSH-туннель сервис
-const SSH_HOST = 'localhost.run';
-const SSH_PORT = 22;
+const SSH_HOST   = 'localhost.run';
+const SSH_PORT   = 22;
 
 async function updateBot(url) {
   const body = JSON.stringify({
@@ -27,12 +24,32 @@ async function updateBot(url) {
     }, (res) => {
       let d = '';
       res.on('data', c => d += c);
-      res.on('end', () => resolve(JSON.parse(d).ok));
+      res.on('end', () => { try { resolve(JSON.parse(d).ok); } catch { resolve(false); } });
     });
     req.on('error', () => resolve(false));
     req.write(body);
     req.end();
   });
+}
+
+let announced = false;
+async function handleUrl(url) {
+  if (announced) return;
+  announced = true;
+  console.log(`  🌐 Публичный URL: ${url}\n`);
+  if (BOT_TOKEN) {
+    const ok = await updateBot(url);
+    console.log(ok
+      ? `  ✅ Кнопка бота обновлена!\n  🤖 https://t.me/miniap_pp_bot\n`
+      : `  ⚠️  Вставьте URL вручную в BotFather: ${url}\n`
+    );
+  }
+  console.log('  Не закрывайте это окно!\n');
+}
+
+function extractUrl(text) {
+  const m = text.match(/https:\/\/[a-z0-9][-a-z0-9.]+\.(lhr\.life|localhost\.run|localto\.net)/);
+  return m ? m[0] : null;
 }
 
 async function start() {
@@ -48,69 +65,54 @@ async function start() {
     socket = info.socket;
     console.log('  ✅ SOCKS-подключение установлено');
   } catch (err) {
-    console.error('  ❌ Не удалось подключиться через SOCKS:', err.message);
-    console.log('  Убедитесь что VPN (Clash) запущен и SOCKS-порт 10808 активен.');
+    console.error('  ❌ SOCKS ошибка:', err.message);
     process.exit(1);
   }
 
   const conn = new Client();
 
   conn.on('ready', () => {
-    console.log('  ✅ SSH соединение установлено\n');
+    console.log('  ✅ SSH соединение установлено');
+    console.log('  ⏳ Ожидаем URL туннеля...\n');
 
-    // Запрашиваем reverse tunnel — localhost.run выдаёт URL в потоке
-    conn.forwardIn('', 0, (err) => {
+    // Просим reverse port forwarding (порт 0 = сервер назначит сам)
+    conn.forwardIn('', 0, (err, port) => {
+      if (err) console.warn('  forwardIn warn:', err.message);
+    });
+
+    // localhost.run пишет URL через shell-сессию
+    conn.shell({ term: 'xterm' }, (err, stream) => {
       if (err) {
-        console.error('  ❌ Ошибка туннеля:', err.message);
-        process.exit(1);
+        console.error('  ❌ Shell ошибка:', err.message);
+        return;
       }
+
+      const onData = (d) => {
+        const text = d.toString();
+        const url = extractUrl(text);
+        if (url) handleUrl(url);
+      };
+
+      stream.on('data', onData);
+      stream.stderr.on('data', onData);
     });
   });
 
+  // Входящие соединения через туннель → пробрасываем на localhost:3000
   conn.on('tcp connection', (info, accept) => {
-    const stream = accept();
-    const net = require('net');
-    const local = net.createConnection(LOCAL_PORT, '127.0.0.1');
-    stream.pipe(local).pipe(stream);
-    stream.on('close', () => local.destroy());
-    local.on('close', () => stream.close());
+    const remote = accept();
+    const local  = net.createConnection(LOCAL_PORT, '127.0.0.1');
+    remote.pipe(local).pipe(remote);
+    remote.on('close', () => local.destroy());
+    local.on('close',  () => remote.close());
+    local.on('error',  () => remote.close());
+    remote.on('error', () => local.destroy());
   });
 
-  // localhost.run пишет URL в stderr/stdout SSH сессии
-  conn.on('banner', (msg) => {
-    const match = msg.match(/https:\/\/[^\s]+/);
-    if (match) handleUrl(match[0]);
+  conn.on('error', (err) => {
+    console.error('  ❌ SSH ошибка:', err.message);
+    process.exit(1);
   });
-
-  conn.shell((err, stream) => {
-    if (err) return;
-    let buf = '';
-    stream.on('data', (d) => {
-      buf += d.toString();
-      const match = buf.match(/https:\/\/[a-z0-9-]+\.[a-z.]+/);
-      if (match) handleUrl(match[0]);
-    });
-    stream.stderr.on('data', (d) => {
-      const text = d.toString();
-      const match = text.match(/https:\/\/[a-z0-9-]+\.[a-z.]+/);
-      if (match) handleUrl(match[0]);
-    });
-  });
-
-  let announced = false;
-  async function handleUrl(url) {
-    if (announced) return;
-    announced = true;
-    console.log(`  🌐 Публичный URL: ${url}\n`);
-    if (BOT_TOKEN) {
-      const ok = await updateBot(url);
-      console.log(ok
-        ? `  ✅ Кнопка бота обновлена!\n  🤖 https://t.me/miniap_pp_bot\n`
-        : `  ⚠️  Вставьте URL вручную в BotFather: ${url}\n`
-      );
-    }
-    console.log('  Не закрывайте это окно!\n');
-  }
 
   conn.connect({
     sock:     socket,
@@ -118,11 +120,6 @@ async function start() {
     algorithms: {
       serverHostKey: ['rsa-sha2-512', 'rsa-sha2-256', 'ssh-rsa', 'ecdsa-sha2-nistp256']
     }
-  });
-
-  conn.on('error', (err) => {
-    console.error('  ❌ SSH ошибка:', err.message);
-    process.exit(1);
   });
 }
 
