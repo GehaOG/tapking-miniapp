@@ -48,7 +48,8 @@ async function handleUrl(url) {
 }
 
 function extractUrl(text) {
-  const m = text.match(/https:\/\/[a-z0-9][-a-z0-9.]+\.(lhr\.life|localhost\.run|localto\.net)/);
+  // Только реальный URL туннеля вида xxxx.lhr.life
+  const m = text.match(/https:\/\/[a-f0-9]{14,}\.lhr\.life/);
   return m ? m[0] : null;
 }
 
@@ -75,8 +76,8 @@ async function start() {
     console.log('  ✅ SSH соединение установлено');
     console.log('  ⏳ Ожидаем URL туннеля...\n');
 
-    // Просим reverse port forwarding (порт 0 = сервер назначит сам)
-    conn.forwardIn('', 0, (err, port) => {
+    // Просим reverse port forwarding
+    conn.forwardIn('', 80, (err) => {
       if (err) console.warn('  forwardIn warn:', err.message);
     });
 
@@ -108,6 +109,8 @@ async function start() {
     local.on('error',  () => remote.close());
     remote.on('error', () => local.destroy());
   });
+
+  // banner игнорируем — там нет реального URL туннеля
 
   conn.on('error', (err) => {
     console.error('  ❌ SSH ошибка:', err.message);
