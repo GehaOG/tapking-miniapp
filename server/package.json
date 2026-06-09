@@ -16,6 +16,8 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "localtunnel": "^2.0.2"
+    "localtunnel": "^2.0.2",
+    "socks": "^2.8.9",
+    "ssh2": "^1.17.0"
   }
 }
